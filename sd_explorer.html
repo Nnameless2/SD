@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SD Explorer — Dunearn Sec 4</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap');
+  :root {
+    --bg:#0d1117; --surface:#161b22; --card:#1c2128; --border:#30363d;
+    --accent:#f78166; --blue:#79c0ff; --green:#56d364; --yellow:#e3b341;
+    --text:#e6edf3; --muted:#8b949e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-height:100vh}
+  .mono{font-family:'JetBrains Mono',monospace}
+  input,button,select{font-family:'Sora',sans-serif}
+
+  /* layout helpers */
+  .center{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .col{display:flex;flex-direction:column;gap:12px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+  /* cards */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+
+  /* inputs */
+  .input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);font-size:16px;padding:10px 14px;outline:none;transition:border-color .2s}
+  .input:focus{border-color:var(--blue)}
+
+  /* buttons */
+  .btn{border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;
+    padding:11px 22px;transition:opacity .15s,transform .1s;display:inline-flex;align-items:center;gap:6px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn:not(:disabled):hover{opacity:.85}
+  .btn:not(:disabled):active{transform:scale(.97)}
+  .btn-blue  {background:var(--blue);color:var(--bg)}
+  .btn-yellow{background:var(--yellow);color:var(--bg)}
+  .btn-red   {background:var(--accent);color:#fff}
+  .btn-green {background:var(--green);color:var(--bg)}
+  .btn-ghost {background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-block {width:100%;justify-content:center}
+
+  /* tag */
+  .tag{display:inline-block;border-radius:20px;font-size:12px;font-weight:600;padding:3px 10px}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{color:var(--muted);font-weight:600;padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  td{padding:8px 10px;border-bottom:1px solid #30363d22}
+  tr:last-child td{border-bottom:none}
+
+  /* stat boxes */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .stat-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;text-align:center}
+  .stat-val{font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace}
+  .stat-lbl{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* progress bar */
+  .prog-bar{display:flex;gap:6px;margin-bottom:24px}
+  .prog-seg{flex:1;height:4px;border-radius:4px;background:var(--border);transition:background .4s}
+
+  /* misc */
+  .errbox{background:#f7816618;border:1px solid #f7816655;border-radius:8px;
+    padding:10px 14px;font-size:13px;color:var(--accent);margin-bottom:14px}
+  .infobox{background:#79c0ff11;border:1px solid #79c0ff44;border-radius:8px;
+    padding:10px 14px;font-size:13px;color:var(--blue);margin-bottom:14px}
+  .hint{font-size:13px;color:var(--muted);background:var(--surface);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+  .label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+  .page{display:none;padding:24px 16px;max-width:920px;margin:0 auto}
+  .page.active{display:block}
+  .page-student{max-width:460px;margin:0 auto;padding:40px 16px}
+
+  /* x-bar overline */
+  .xb::after{content:'';display:inline-block}
+  .xb{display:inline-block;position:relative;}
+  .xb::before{content:'';position:absolute;top:1px;left:0;right:0;height:1.5px;background:currentColor}
+
+  /* spinner */
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;
+    border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* pulse dot */
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+    display:inline-block;box-shadow:0 0 6px var(--green);animation:pu 2s ease-in-out infinite}
+  @keyframes pu{0%,100%{opacity:.5}50%{opacity:1}}
+
+  /* flash in */
+  .flash{animation:fi .4s ease}
+  @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  /* waiting pulse */
+  .big-pulse{font-size:40px;animation:pu 2s ease-in-out infinite;display:block;margin-bottom:12px}
+
+  /* timeline */
+  .timeline{display:flex;align-items:center;margin-bottom:20px}
+  .tl-node{text-align:center}
+  .tl-circle{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-weight:700;font-size:16px;margin:0 auto 6px;
+    border:2px solid var(--border);background:var(--surface);color:var(--muted);transition:all .3s}
+  .tl-line{flex:1;height:2px;background:var(--border);margin:0 10px;margin-bottom:28px;transition:background .3s}
+  .tl-lbl{font-size:11px;font-weight:600;color:var(--muted);transition:color .3s}
+  .tl-count{font-size:11px;margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+  /* phase gate row */
+  .gate-row{display:flex;align-items:center;gap:16px;border-radius:10px;
+    padding:14px 18px;border:1px solid var(--border);background:var(--surface);transition:all .3s}
+
+  @media(max-width:600px){
+    .stats-grid{grid-template-columns:repeat(2,1fr)}
+    .gate-row{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HOME ═══════════════════════ -->
+<div id="page-home" class="page active">
+  <div class="center">
+    <div style="width:100%;max-width:420px;text-align:center">
+      <div style="font-size:11px;color:var(--blue);font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">
+        Dunearn Secondary · Sec 4 Maths
+      </div>
+      <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;line-height:1.15">
+        Standard Deviation<br/><span style="color:var(--blue)">Explorer</span>
+      </h1>
+      <p style="color:var(--muted);font-size:15px;margin-bottom:36px">
+        A live collaborative activity — teacher-paced, step by step.
+      </p>
+      <div class="col">
+        <button class="btn btn-blue btn-block" style="font-size:17px;padding:14px 0" onclick="showStudent()">
+          I'm a Student →
+        </button>
+        <button class="btn btn-ghost btn-block" style="font-size:14px;padding:11px 0" onclick="showAdminLogin()">
+          Teacher Admin Login
+        </button>
+      </div>
+      <div style="margin-top:32px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:12px;text-align:left">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--blue)">📋 How to use</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.8">
+          1. Share this page link with students — they open on their devices<br/>
+          2. Students tap "I'm a Student" and submit their height<br/>
+          3. Teacher logs in and clicks <strong style="color:var(--text)">Unlock Phase 2</strong> when all heights are in<br/>
+          4. Students compute x − <span style="text-decoration:overline;font-style:normal">x</span> → teacher unlocks Phase 3<br/>
+          5. Students square deviation → σ is revealed for everyone
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ADMIN LOGIN ═══════════════════════ -->
+<div id="page-admin-login" class="page">
+  <div class="center">
+    <div class="card" style="width:100%;max-width:360px">
+      <div style="font-weight:700;font-size:18px;margin-bottom:4px">Admin Login</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:20px">Dunearn SD Explorer</div>
+      <label class="label">Password</label>
+      <input class="input" type="password" id="admin-pw" placeholder="Enter password"
+        style="margin-bottom:10px" onkeydown="if(event.key==='Enter')attemptLogin()"/>
+      <div id="login-err" style="color:var(--accent);font-size:13px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-blue btn-block" onclick="attemptLogin()">Login</button>
+      <button class="btn btn-ghost btn-block" style="margin-top:8px" onclick="showPage('page-home')">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ADMIN DASHBOARD ═══════════════════════ -->
+<div id="page-admin" class="page">
+  <div class="page" id="admin-inner" style="display:block">
+
+    <!-- header -->
+    <div class="row" style="justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:11px;color:var(--blue);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Admin Dashboard</div>
+        <h1 style="font-size:22px;font-weight:700">Standard Deviation Explorer</h1>
+      </div>
+      <div class="row">
+        <span id="sync-indicator" style="font-size:12px;color:var(--muted);display:none">
+          <span class="spin"></span> saving…
+        </span>
+        <button class="btn btn-ghost" onclick="adminReload()">↻ Refresh</button>
+        <button class="btn btn-ghost" style="color:var(--accent);border-color:#f7816655" onclick="handleReset()">Reset All</button>
+        <button class="btn btn-ghost" onclick="adminLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div id="admin-err" class="errbox" style="display:none"></div>
+
+    <!-- live indicator -->
+    <div class="row" style="margin-bottom:20px;font-size:13px;color:var(--muted)">
+      <span class="live-dot"></span>
+      Live via Firebase · auto-refreshes every 3 seconds
+      <span style="margin-left:auto" id="admin-summary">0 students · Phase 1</span>
+    </div>
+
+    <!-- PHASE CONTROL -->
+    <div class="card" style="margin-bottom:24px;border-color:#79c0ff44">
+      <div class="row" style="justify-content:space-between;margin-bottom:18px">
+        <div style="font-weight:700;font-size:16px">Phase Control</div>
+        <span class="tag" id="phase-tag" style="background:#79c0ff22;color:var(--blue);font-size:14px">Phase 1 active</span>
+      </div>
+
+      <!-- timeline -->
+      <div class="timeline">
+        <div class="tl-node" id="tl-1">
+          <div class="tl-circle" id="tl-circle-1">1</div>
+          <div class="tl-lbl">Heights</div>
+          <div class="tl-count" id="tl-count-1" style="color:var(--blue)">0/0</div>
+        </div>
+        <div class="tl-line" id="tl-line-1"></div>
+        <div class="tl-node" id="tl-2">
+          <div class="tl-circle" id="tl-circle-2">2</div>
+          <div class="tl-lbl" id="tl-lbl-2">Deviation</div>
+          <div class="tl-count" id="tl-count-2" style="color:var(--yellow)">0/0</div>
+        </div>
+        <div class="tl-line" id="tl-line-2"></div>
+        <div class="tl-node" id="tl-3">
+          <div class="tl-circle" id="tl-circle-3">3</div>
+          <div class="tl-lbl" id="tl-lbl-3">Squared</div>
+          <div class="tl-count" id="tl-count-3" style="color:var(--accent)">0/0</div>
+        </div>
+        <div class="tl-line" id="tl-line-3"></div>
+        <div class="tl-node" id="tl-4">
+          <div class="tl-circle" id="tl-circle-4">4</div>
+          <div class="tl-lbl" id="tl-lbl-4">Std Dev</div>
+          <div class="tl-count" id="tl-count-4" style="color:var(--green)">0/0</div>
+        </div>
+      </div>
+
+      <!-- gate rows -->
+      <div class="col">
+        <div class="gate-row" id="gate-2">
+          <div style="font-size:22px" id="gate-2-icon">🔒</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px" id="gate-2-title">Unlock Phase 2 — Enter Deviation</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="gate-2-desc">
+              Submit at least 1 height first.
+            </div>
+          </div>
+          <button class="btn" id="gate-2-btn" onclick="unlockPhase(2)" disabled
+            style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:13px;padding:9px 18px;flex-shrink:0">
+            Unlock Phase 2 →
+          </button>
+        </div>
+        <div class="gate-row" id="gate-3">
+          <div style="font-size:22px" id="gate-3-icon">🔒</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px" id="gate-3-title">Unlock Phase 3 — Square the Deviation</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="gate-3-desc">
+              Unlock Phase 2 and collect deviations first.
+            </div>
+          </div>
+          <button class="btn" id="gate-3-btn" onclick="unlockPhase(3)" disabled
+            style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:13px;padding:9px 18px;flex-shrink:0">
+            Unlock Phase 3 →
+          </button>
+        </div>
+        <div class="gate-row" id="gate-4">
+          <div style="font-size:22px" id="gate-4-icon">🔒</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px" id="gate-4-title">Unlock Phase 4 — Divide by n and Square Root</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="gate-4-desc">
+              Unlock Phase 3 and collect squared deviations first.
+            </div>
+          </div>
+          <button class="btn" id="gate-4-btn" onclick="unlockPhase(4)" disabled
+            style="background:var(--surface);color:var(--muted);border:1px solid var(--border);font-size:13px;padding:9px 18px;flex-shrink:0">
+            Unlock Phase 4 →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-val" id="stat-mean" style="color:var(--blue)">—</div><div class="stat-lbl">Mean Height (<span style="text-decoration:overline;font-style:normal">x</span>)</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-sumdiff" style="color:var(--yellow)">—</div><div class="stat-lbl">Σ(x − <span style="text-decoration:overline;font-style:normal">x</span>)</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-sumsq" style="color:var(--accent)">—</div><div class="stat-lbl">Σ(x − <span style="text-decoration:overline;font-style:normal">x</span>)²</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-sd" style="color:var(--green)">—</div><div class="stat-lbl">Std Dev σ</div></div>
+    </div>
+
+    <!-- sum callout -->
+    <div id="sum-callout" class="card" style="display:none;margin-bottom:24px;border-color:#e3b34166;align-items:center;gap:12px;flex-direction:row">
+      <span style="font-size:22px" id="sum-icon">⏳</span>
+      <div>
+        <div style="font-weight:600;font-size:14px" id="sum-text"></div>
+        <div style="color:var(--muted);font-size:13px;margin-top:2px">Deviations above and below the mean always cancel out.</div>
+      </div>
+    </div>
+
+    <!-- SD formula -->
+    <div id="sd-formula" class="card flash" style="display:none;margin-bottom:24px;text-align:center">
+      <div style="color:var(--muted);font-size:13px;margin-bottom:12px">Population Standard Deviation</div>
+      <!-- static formula display -->
+      <div style="font-size:20px;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+        <span style="color:var(--green);font-weight:700;font-size:22px">σ</span>
+        <span style="color:var(--muted)">=</span>
+        <span style="color:var(--text);font-size:28px;line-height:1">√</span>
+        <span style="display:inline-flex;flex-direction:column;align-items:center;font-size:15px">
+          <span style="color:var(--accent);border-bottom:1.5px solid var(--muted);padding-bottom:3px;padding:0 4px 3px">
+            Σ(x − <span style="text-decoration:overline">x</span>)²
+          </span>
+          <span style="color:var(--blue);padding-top:3px">n</span>
+        </span>
+      </div>
+      <!-- computed values -->
+      <div class="mono" style="font-size:14px;color:var(--muted);margin-bottom:12px" id="sd-formula-text"></div>
+      <!-- result -->
+      <div style="font-size:26px;font-weight:700;color:var(--green)">
+        σ = <span id="sd-formula-result" class="mono">—</span>
+      </div>
+    </div>
+
+    <!-- table -->
+    <div class="card" style="overflow:auto">
+      <div style="font-weight:700;margin-bottom:16px;font-size:15px">
+        Class Records <span id="student-count" style="color:var(--muted);font-weight:400;font-size:13px;margin-left:10px"></span>
+      </div>
+      <div id="table-empty" style="color:var(--muted);text-align:center;padding:32px">
+        No students yet. Students open this page and tap "I'm a Student".
+      </div>
+      <div id="table-wrap" style="display:none">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Name</th><th>Height</th>
+            <th style="color:var(--yellow)">Actual x−<span style="text-decoration:overline;font-style:normal">x</span></th>
+            <th style="color:var(--yellow)">Student diff</th>
+            <th style="color:var(--accent)">Actual (x−<span style="text-decoration:overline;font-style:normal">x</span>)²</th>
+            <th style="color:var(--accent)">Student sq</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="student-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ STUDENT ═══════════════════════ -->
+<div id="page-student" class="page">
+  <div class="page-student">
+
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:11px;color:var(--blue);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;font-weight:700">
+        Dunearn Secondary · Sec 4 Maths
+      </div>
+      <h1 style="font-size:24px;font-weight:700">
+        Standard Deviation <span style="color:var(--blue)">Explorer</span>
+      </h1>
+    </div>
+
+    <!-- progress bar -->
+    <div class="prog-bar">
+      <div class="prog-seg" id="prog-0"></div>
+      <div class="prog-seg" id="prog-1"></div>
+      <div class="prog-seg" id="prog-2"></div>
+      <div class="prog-seg" id="prog-3"></div>
+    </div>
+
+    <div id="student-err" class="errbox" style="display:none"></div>
+
+    <!-- Step 1: height -->
+    <div id="s-step1" class="card flash">
+      <div style="color:var(--blue);font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px">
+        Step 1 of 3 — Your Height
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+        Enter your name and height. Together we'll find the <strong style="color:var(--text)">class mean</strong>.
+      </p>
+      <label class="label">Your name</label>
+      <input class="input" id="s-name" placeholder="e.g. Lee Jun Kai" style="margin-bottom:14px"/>
+      <label class="label">Your height (cm)</label>
+      <input class="input" id="s-height" type="number" placeholder="e.g. 168" style="margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')submitHeight()"/>
+      <button class="btn btn-blue btn-block" style="margin-top:6px" id="s-btn1" onclick="submitHeight()">
+        Submit Height →
+      </button>
+    </div>
+
+    <!-- Waiting ph2 -->
+    <div id="s-wait2" class="card flash" style="display:none;text-align:center;border-color:#e3b34144">
+      <span class="big-pulse">⏳</span>
+      <div style="font-weight:700;font-size:18px;margin-bottom:8px;color:var(--yellow)">Height submitted!</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+        Waiting for your teacher to release the class mean once
+        <strong style="color:var(--text)">everyone</strong> has submitted.
+      </p>
+      <div style="background:var(--surface);border-radius:10px;padding:12px 16px;font-size:13px">
+        <span style="color:var(--muted)">Your height: </span>
+        <span class="mono" id="s-height-display" style="color:var(--blue);font-weight:700"></span>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+        <span class="spin"></span> Checking every 3 seconds…
+      </div>
+    </div>
+
+    <!-- Step 2: deviation -->
+    <div id="s-step2" class="card flash" style="display:none">
+      <div style="color:var(--yellow);font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px">
+        Step 2 of 3 — Your Deviation
+      </div>
+      <div id="s-mean-box" style="background:var(--surface);border:1px solid #79c0ff44;border-radius:10px;padding:14px 18px;margin-bottom:18px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Final class mean height (<span style="text-decoration:overline;font-style:normal">x</span>)</div>
+        <div class="mono" id="s-mean-val" style="font-size:28px;font-weight:700;color:var(--blue)">— cm</div>
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:14px">
+        Calculate <strong style="color:var(--text)">x − <span style="text-decoration:overline;font-style:normal">x</span></strong>. It can be negative!
+      </p>
+      <div class="hint" id="s-diff-hint">💡 Your height: — cm | <span style="text-decoration:overline;font-style:normal">x</span> = — cm</div>
+      <label class="label">Your value of (x − <span style="text-decoration:overline;font-style:normal">x</span>)</label>
+      <input class="input" id="s-diff" type="number" placeholder="e.g. −3.4" style="margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')submitDiff()"/>
+      <button class="btn btn-yellow btn-block" style="margin-top:6px" id="s-btn2" onclick="submitDiff()">
+        Submit Deviation →
+      </button>
+      <div id="s-sum-display" style="margin-top:14px;text-align:center;font-size:13px;display:none">
+        <span style="color:var(--muted)">Running Σ(x−<span style="text-decoration:overline;font-style:normal">x</span>) = </span>
+        <span class="mono" id="s-sum-val" style="font-weight:700"></span>
+        <span style="color:var(--muted)"> (watch it approach 0!)</span>
+      </div>
+    </div>
+
+    <!-- Waiting ph3 -->
+    <div id="s-wait3" class="card flash" style="display:none;text-align:center;border-color:#f7816644">
+      <span class="big-pulse">⏳</span>
+      <div style="font-weight:700;font-size:18px;margin-bottom:8px;color:var(--accent)">Deviation submitted!</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+        Waiting for your teacher to confirm everyone's deviation before we square it.
+      </p>
+      <div style="background:var(--surface);border-radius:10px;padding:12px 16px;font-size:13px">
+        <span style="color:var(--muted)">Your (x − <span style="text-decoration:overline;font-style:normal">x</span>): </span>
+        <span class="mono" id="s-diff-display" style="color:var(--yellow);font-weight:700"></span>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+        <span class="spin"></span> Checking every 3 seconds…
+      </div>
+    </div>
+
+    <!-- Step 3: square -->
+    <div id="s-step3" class="card flash" style="display:none">
+      <div style="color:var(--accent);font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px">
+        Step 3 of 4 — Square It!
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:14px">
+        Compute <strong style="color:var(--text)">(x − <span style="text-decoration:overline;font-style:normal">x</span>)²</strong>. Squaring makes everything positive!
+      </p>
+      <div style="background:#56d36411;border:1px solid #56d36444;border-radius:10px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:13px;color:var(--green);font-weight:700">Class Σ(x−<span style="text-decoration:overline;font-style:normal">x</span>) ≈ 0 ✓</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">The deviations cancel out — that's why we square them!</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+        <span style="color:var(--muted)">Your (x − <span style="text-decoration:overline;font-style:normal">x</span>): </span>
+        <span class="mono" id="s-diff-display2" style="color:var(--yellow);font-weight:700"></span>
+        <span style="color:var(--muted)"> → square this!</span>
+      </div>
+      <label class="label">Your value of (x − <span style="text-decoration:overline;font-style:normal">x</span>)²</label>
+      <input class="input" id="s-diffsq" type="number" placeholder="e.g. 11.56" style="margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')submitDiffSq()"/>
+      <button class="btn btn-red btn-block" style="margin-top:6px" id="s-btn3" onclick="submitDiffSq()">
+        Submit →
+      </button>
+    </div>
+
+    <!-- Waiting ph4 -->
+    <div id="s-wait4" class="card flash" style="display:none;text-align:center;border-color:#56d36444">
+      <span class="big-pulse">⏳</span>
+      <div style="font-weight:700;font-size:18px;margin-bottom:8px;color:var(--green)">Squared value submitted!</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+        Waiting for your teacher to release the class total so you can compute σ.
+      </p>
+      <div style="background:var(--surface);border-radius:10px;padding:12px 16px;font-size:13px">
+        <span style="color:var(--muted)">Your (x − <span style="text-decoration:overline;font-style:normal">x</span>)²: </span>
+        <span class="mono" id="s-diffsq-display" style="color:var(--accent);font-weight:700"></span>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+        <span class="spin"></span> Checking every 3 seconds…
+      </div>
+    </div>
+
+    <!-- Step 4: divide by n and square root -->
+    <div id="s-step4" class="card flash" style="display:none">
+      <div style="color:var(--green);font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px">
+        Step 4 of 4 — Find σ!
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:14px">
+        The class total of all (x − <span style="text-decoration:overline;font-style:normal">x</span>)² has been collected. Now divide by <strong style="color:var(--text)">n</strong> (number of students), then take the <strong style="color:var(--text)">square root</strong>.
+      </p>
+      <div id="s-step4-info" style="background:var(--surface);border:1px solid #79c0ff44;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px">
+        <div style="color:var(--muted);margin-bottom:6px">Class values (revealed by teacher):</div>
+        <div class="mono" id="s-step4-sumsq" style="color:var(--accent);font-size:16px;margin-bottom:4px"></div>
+        <div class="mono" id="s-step4-n" style="color:var(--blue);font-size:16px;margin-bottom:4px"></div>
+        <div class="mono" id="s-step4-div" style="color:var(--yellow);font-size:16px"></div>
+      </div>
+      <div style="background:var(--surface);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px;color:var(--muted)">
+        💡 Compute: <span class="mono" style="color:var(--text)">√( Σ(x−<span style="text-decoration:overline;font-style:normal">x</span>)² ÷ n )</span> and round to 2 d.p.
+      </div>
+      <label class="label">Your value of σ (standard deviation)</label>
+      <input class="input" id="s-sd-input" type="number" placeholder="e.g. 4.32" step="0.01" style="margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')submitSD()"/>
+      <button class="btn btn-green btn-block" style="margin-top:6px" id="s-btn4" onclick="submitSD()">
+        Submit σ →
+      </button>
+    </div>
+
+    <!-- Done -->
+    <div id="s-done" class="card flash" style="display:none;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">🎉</div>
+      <div id="s-done-name" style="font-weight:700;font-size:20px;margin-bottom:8px;color:var(--green)"></div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:24px">
+        Great work! Here is the class standard deviation.
+      </p>
+      <div id="s-sd-reveal" style="display:none">
+        <div style="height:1px;background:var(--border);margin:0 0 20px"></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Class Standard Deviation</div>
+        <!-- formula -->
+      <div style="font-size:18px;margin:12px 0;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+        <span style="color:var(--green);font-weight:700;font-size:20px">σ</span>
+        <span style="color:var(--muted)">=</span>
+        <span style="color:var(--text);font-size:26px;line-height:1">√</span>
+        <span style="display:inline-flex;flex-direction:column;align-items:center;font-size:14px">
+          <span style="color:var(--accent);border-bottom:1.5px solid var(--muted);padding:0 4px 3px">
+            Σ(x − <span style="text-decoration:overline">x</span>)²
+          </span>
+          <span style="color:var(--blue);padding-top:3px">n</span>
+        </span>
+      </div>
+      <div class="mono" id="s-sd-formula" style="font-size:13px;color:var(--muted);margin-bottom:8px"></div>
+      <div class="mono" id="s-sd-val" style="font-size:32px;font-weight:700;color:var(--green)"></div>
+        <div style="margin-top:16px;background:var(--surface);border-radius:10px;padding:14px 16px">
+          <div style="font-size:13px;color:var(--muted)">
+            σ measures how spread the class heights are from the mean.<br/>
+            <strong style="color:var(--text)">Larger σ</strong> = more spread.
+            <strong style="color:var(--text)">Smaller σ</strong> = more clustered.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── FIREBASE ─────────────────────────────────────────────────────────────
+const FB = "https://standard-deviation-explorer-default-rtdb.asia-southeast1.firebasedatabase.app/classState.json";
+
+async function fbRead() {
+  const r = await fetch(FB);
+  if (!r.ok) throw new Error("Firebase read error: " + r.status + " — check database rules are set to public");
+  const d = await r.json();
+  if (!d) return { phase: 1, students: [] };
+  if (d.students && !Array.isArray(d.students)) d.students = Object.values(d.students);
+  if (!d.students) d.students = [];
+  return d;
+}
+
+async function fbWrite(state) {
+  const r = await fetch(FB, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state)
+  });
+  if (!r.ok) throw new Error("Firebase write error: " + r.status);
+  return await r.json();
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = "dunearn2026";
+let currentPage = "page-home";
+let adminAuthed  = false;
+let pollTimer    = null;
+
+// Student local state (doesn't need to persist across page reloads)
+let studentStep = 1;
+let studentId   = null;
+let studentName = "";
+let studentHeight = "";
+let studentDiff = "";
+
+const fmt2 = n => Number(n).toFixed(2);
+const mean2 = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  currentPage = id;
+}
+
+function showStudent() {
+  showPage("page-student");
+  studentStep = 1;
+  showStudentStep(1);
+  startPolling();
+}
+
+function showAdminLogin() {
+  showPage("page-admin-login");
+  document.getElementById("admin-pw").value = "";
+  document.getElementById("login-err").style.display = "none";
+}
+
+function attemptLogin() {
+  const pw = document.getElementById("admin-pw").value;
+  if (pw === ADMIN_PASSWORD) {
+    adminAuthed = true;
+    showPage("page-admin");
+    adminReload();
+    startPolling();
+  } else {
+    const e = document.getElementById("login-err");
+    e.textContent = "Incorrect password.";
+    e.style.display = "block";
+  }
+}
+
+function adminLogout() {
+  adminAuthed = false;
+  stopPolling();
+  showPage("page-home");
+}
+
+// ─── POLLING ──────────────────────────────────────────────────────────────
+function startPolling() {
+  stopPolling();
+  poll();
+  pollTimer = setInterval(poll, 3000);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+async function poll() {
+  try {
+    const state = await fbRead();
+    if (currentPage === "page-admin") renderAdmin(state);
+    if (currentPage === "page-student") renderStudentPoll(state);
+  } catch(e) {
+    if (currentPage === "page-admin") showAdminErr(e.message);
+  }
+}
+
+async function adminReload() {
+  try {
+    const state = await fbRead();
+    renderAdmin(state);
+    hideAdminErr();
+  } catch(e) {
+    showAdminErr(e.message);
+  }
+}
+
+// ─── ADMIN RENDER ─────────────────────────────────────────────────────────
+function showAdminErr(msg) {
+  const el = document.getElementById("admin-err");
+  el.textContent = "⚠ " + msg;
+  el.style.display = "block";
+}
+function hideAdminErr() {
+  document.getElementById("admin-err").style.display = "none";
+}
+
+function renderAdmin(state) {
+  hideAdminErr();
+  const { phase, students } = state;
+  const total    = students.length;
+  const heights  = students.filter(s=>s.height!=null).map(s=>s.height);
+  const diffs    = students.filter(s=>s.diff  !=null).map(s=>s.diff);
+  const sqs      = students.filter(s=>s.diffSq!=null).map(s=>s.diffSq);
+  const mu       = mean2(heights);
+  const sumDiff  = diffs.reduce((a,b)=>a+b,0);
+  const sumSq    = sqs.reduce((a,b)=>a+b,0);
+  const sdVal    = sqs.length ? Math.sqrt(sumSq/sqs.length) : null;
+  const sub      = [heights.length, diffs.length, sqs.length];
+
+  // summary
+  document.getElementById("admin-summary").textContent = `${total} student(s) · Phase ${phase} active`;
+  document.getElementById("phase-tag").textContent = `Phase ${phase} active`;
+
+  // timeline nodes
+  const cols  = ["var(--blue)","var(--yellow)","var(--accent)","var(--green)"];
+  for (let i=1;i<=4;i++) {
+    const circle = document.getElementById("tl-circle-"+i);
+    const lbl    = document.getElementById("tl-lbl-"+i);
+    const cnt    = document.getElementById("tl-count-"+i);
+    if (phase >= i) {
+      circle.style.background = cols[i-1]+"22";
+      circle.style.borderColor = cols[i-1];
+      circle.style.color = cols[i-1];
+      if (lbl) lbl.style.color = "var(--text)";
+    } else {
+      circle.style.background = "var(--surface)";
+      circle.style.borderColor = "var(--border)";
+      circle.style.color = "var(--muted)";
+      if (lbl) lbl.style.color = "var(--muted)";
+    }
+    cnt.textContent = sub[i-1]+"/"+total;
+  }
+  // timeline lines
+  for (let i=1;i<=3;i++) {
+    document.getElementById("tl-line-"+i).style.background = phase>i?cols[i-1]:"var(--border)";
+  }
+
+  // gate 2
+  const g2ready = phase===1 && sub[0]>0;
+  const g2done  = phase>=2;
+  const btn2    = document.getElementById("gate-2-btn");
+  const row2    = document.getElementById("gate-2");
+  document.getElementById("gate-2-icon").textContent  = g2done?"✅":g2ready?"🔓":"🔒";
+  document.getElementById("gate-2-title").textContent = g2done?"Phase 2 is unlocked":"Unlock Phase 2 — Enter Deviation";
+  document.getElementById("gate-2-title").style.color = g2done?"var(--green)":g2ready?"var(--yellow)":"var(--muted)";
+  document.getElementById("gate-2-desc").textContent  = g2done
+    ?"Students may now submit Phase 2 data."
+    :`${sub[0]} height(s) submitted. Release the class mean so students can compute x − x̅.`;
+  row2.style.background   = g2done?"#56d36411":g2ready?"#e3b34111":"var(--surface)";
+  row2.style.borderColor  = g2done?"#56d36444":g2ready?"#e3b34144":"var(--border)";
+  if (g2done) {
+    btn2.style.display = "none";
+  } else {
+    btn2.style.display = "inline-flex";
+    btn2.disabled = !g2ready;
+    btn2.style.background   = g2ready?"var(--yellow)":"var(--surface)";
+    btn2.style.color        = g2ready?"var(--bg)":"var(--muted)";
+    btn2.style.border       = g2ready?"none":"1px solid var(--border)";
+  }
+
+  // gate 3
+  const g3ready = phase===2 && sub[1]>0;
+  const g3done  = phase>=3;
+  const btn3    = document.getElementById("gate-3-btn");
+  const row3    = document.getElementById("gate-3");
+  document.getElementById("gate-3-icon").textContent  = g3done?"✅":g3ready?"🔓":"🔒";
+  document.getElementById("gate-3-title").textContent = g3done?"Phase 3 is unlocked":"Unlock Phase 3 — Square the Deviation";
+  document.getElementById("gate-3-title").style.color = g3done?"var(--green)":g3ready?"var(--accent)":"var(--muted)";
+  document.getElementById("gate-3-desc").textContent  = g3done
+    ?"Students may now submit Phase 3 data."
+    :`${sub[1]} deviation(s) submitted. Release Phase 3 so students can compute (x − x̅)².`;
+  row3.style.background   = g3done?"#56d36411":g3ready?"#f7816611":"var(--surface)";
+  row3.style.borderColor  = g3done?"#56d36444":g3ready?"#f7816644":"var(--border)";
+  if (g3done) {
+    btn3.style.display = "none";
+  } else {
+    btn3.style.display = "inline-flex";
+    btn3.disabled = !g3ready;
+    btn3.style.background   = g3ready?"var(--accent)":"var(--surface)";
+    btn3.style.color        = g3ready?"#fff":"var(--muted)";
+    btn3.style.border       = g3ready?"none":"1px solid var(--border)";
+  }
+
+  // gate 4
+  const g4ready = phase===3 && sub[2]>0;
+  const g4done  = phase>=4;
+  const btn4    = document.getElementById("gate-4-btn");
+  const row4    = document.getElementById("gate-4");
+  document.getElementById("gate-4-icon").textContent  = g4done?"✅":g4ready?"🔓":"🔒";
+  document.getElementById("gate-4-title").textContent = g4done?"Phase 4 is unlocked":"Unlock Phase 4 — Divide by n and Square Root";
+  document.getElementById("gate-4-title").style.color = g4done?"var(--green)":g4ready?"var(--green)":"var(--muted)";
+  document.getElementById("gate-4-desc").textContent  = g4done
+    ?"Students may now compute σ."
+    :`${sub[2]} squared value(s) submitted. Release Phase 4 so students can compute σ = √(Σ(x−x̅)²/n).`;
+  row4.style.background   = g4done?"#56d36411":g4ready?"#56d36411":"var(--surface)";
+  row4.style.borderColor  = g4done?"#56d36444":g4ready?"#56d36444":"var(--border)";
+  if (g4done) {
+    btn4.style.display = "none";
+  } else {
+    btn4.style.display = "inline-flex";
+    btn4.disabled = !g4ready;
+    btn4.style.background   = g4ready?"var(--green)":"var(--surface)";
+    btn4.style.color        = g4ready?"var(--bg)":"var(--muted)";
+    btn4.style.border       = g4ready?"none":"1px solid var(--border)";
+  }
+
+  // stats
+  document.getElementById("stat-mean").textContent    = heights.length ? fmt2(mu)+" cm"    : "—";
+  document.getElementById("stat-sumdiff").textContent = diffs.length   ? fmt2(sumDiff)      : "—";
+  document.getElementById("stat-sumsq").textContent   = sqs.length     ? fmt2(sumSq)        : "—";
+  document.getElementById("stat-sd").textContent      = sdVal!=null     ? fmt2(sdVal)+" cm" : "—";
+
+  // sum callout
+  const callout = document.getElementById("sum-callout");
+  if (diffs.length >= 2) {
+    callout.style.display = "flex";
+    const roundedSumDiff = Math.round(sumDiff * 100) / 100;
+    const zero = Math.abs(roundedSumDiff) < 0.05;
+    callout.style.borderColor = zero?"#56d36466":"#e3b34166";
+    document.getElementById("sum-icon").textContent = zero?"✅":"⏳";
+    document.getElementById("sum-text").textContent = zero
+      ?"Σ(x − x̅) = 0 ✔ (rounding differences are expected)"
+      :`Σ(x − x̅) = ${fmt2(roundedSumDiff)} — approaches 0 as all students submit`;
+  } else {
+    callout.style.display = "none";
+  }
+
+  // SD formula
+  const sdBox = document.getElementById("sd-formula");
+  if (sdVal!=null) {
+    sdBox.style.display = "block";
+    document.getElementById("sd-formula-text").textContent =
+      `= √( ${fmt2(sumSq)} ÷ ${sqs.length} ) = √( ${fmt2(sumSq/sqs.length)} )`;
+    document.getElementById("sd-formula-result").textContent = fmt2(sdVal) + " cm";
+  } else {
+    sdBox.style.display = "none";
+  }
+
+  // table
+  const tbody = document.getElementById("student-tbody");
+  document.getElementById("student-count").textContent = total+" student(s)";
+  if (total === 0) {
+    document.getElementById("table-empty").style.display = "block";
+    document.getElementById("table-wrap").style.display  = "none";
+  } else {
+    document.getElementById("table-empty").style.display = "none";
+    document.getElementById("table-wrap").style.display  = "block";
+    tbody.innerHTML = students.map((s,i)=>{
+      const ad = s.height!=null&&heights.length ? s.height-mu : null;
+      const as = ad!=null ? ad*ad : null;
+      const dOk = s.diff  !=null&&ad!=null&&Math.abs(s.diff  -ad)<=0.5;
+      const sOk = s.diffSq!=null&&as!=null&&Math.abs(s.diffSq-as)<=1.0;
+      const statusColor = s.sd!=null?"#56d36422":s.diffSq!=null?"#f7816622":s.diff!=null?"#e3b34122":s.height!=null?"#79c0ff22":"var(--border)";
+      const statusTC    = s.sd!=null?"var(--green)":s.diffSq!=null?"var(--accent)":s.diff!=null?"var(--yellow)":s.height!=null?"var(--blue)":"var(--muted)";
+      const statusTxt   = s.sd!=null?"✓ Done":s.diffSq!=null?"Ph 4":s.diff!=null?"Ph 3":s.height!=null?"Ph 2":"—";
+      return `<tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td style="font-weight:600">${s.name}</td>
+        <td class="mono">${s.height??'—'}</td>
+        <td class="mono" style="color:var(--muted);font-size:12px">${ad!=null?fmt2(ad):'—'}</td>
+        <td class="mono" style="color:${s.diff==null?'var(--muted)':dOk?'var(--green)':'var(--accent)'}">
+          ${s.diff!=null?fmt2(s.diff):'—'}${s.diff!=null&&!dOk?' ⚠':''}
+        </td>
+        <td class="mono" style="color:var(--muted);font-size:12px">${as!=null?fmt2(as):'—'}</td>
+        <td class="mono" style="color:${s.diffSq==null?'var(--muted)':sOk?'var(--green)':'var(--accent)'}">
+          ${s.diffSq!=null?fmt2(s.diffSq):'—'}${s.diffSq!=null&&!sOk?' ⚠':''}
+        </td>
+        <td><span class="tag" style="background:${statusColor};color:${statusTC}">${statusTxt}</span></td>
+      </tr>`;
+    }).join("");
+  }
+}
+
+// ─── ADMIN ACTIONS ────────────────────────────────────────────────────────
+async function unlockPhase(next) {
+  if (!confirm(`Unlock Phase ${next} for all students?`)) return;
+  setSyncing(true);
+  try {
+    const state = await fbRead();
+    state.phase = next;
+    await fbWrite(state);
+    renderAdmin(state);
+    hideAdminErr();
+  } catch(e) {
+    showAdminErr(e.message);
+  } finally {
+    setSyncing(false);
+  }
+}
+
+async function handleReset() {
+  if (!confirm("Reset ALL data and return to Phase 1? This cannot be undone.")) return;
+  setSyncing(true);
+  try {
+    const fresh = { phase:1, students:[] };
+    await fbWrite(fresh);
+    renderAdmin(fresh);
+    hideAdminErr();
+  } catch(e) {
+    showAdminErr(e.message);
+  } finally {
+    setSyncing(false);
+  }
+}
+
+function setSyncing(on) {
+  document.getElementById("sync-indicator").style.display = on?"inline-flex":"none";
+}
+
+// ─── STUDENT STEPS ────────────────────────────────────────────────────────
+function showStudentStep(step) {
+  ["s-step1","s-wait2","s-step2","s-wait3","s-step3","s-wait4","s-step4","s-done"].forEach(id=>{
+    document.getElementById(id).style.display = "none";
+  });
+  const map = {1:"s-step1",2:"s-wait2",3:"s-step2",4:"s-wait3",5:"s-step3",6:"s-wait4",7:"s-step4",8:"s-done"};
+  if (map[step]) document.getElementById(map[step]).style.display = "block";
+
+  // progress bar
+  const prog = step>=8?4:step>=6?3:step>=4?2:step>=2?1:0;
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById("prog-"+i);
+    el.style.background = prog>i?"var(--green)":prog===i?"var(--blue)":"var(--border)";
+  }
+
+  // clear student error
+  document.getElementById("student-err").style.display = "none";
+}
+
+function showStudentErr(msg) {
+  const el = document.getElementById("student-err");
+  el.textContent = "⚠ " + msg;
+  el.style.display = "block";
+}
+
+async function submitHeight() {
+  const name   = document.getElementById("s-name").value.trim();
+  const height = parseFloat(document.getElementById("s-height").value);
+  if (!name)              return showStudentErr("Please enter your name.");
+  if (!height||height<100||height>250) return showStudentErr("Please enter a valid height (100–250 cm).");
+
+  setBtnLoading("s-btn1", true);
+  try {
+    const state = await fbRead();
+    const id = Date.now()+"_"+Math.random().toString(36).slice(2);
+    state.students.push({ id, name, height, diff:null, diffSq:null });
+    await fbWrite(state);
+    studentId     = id;
+    studentName   = name;
+    studentHeight = height;
+    document.getElementById("s-height-display").textContent = height+" cm";
+    studentStep = 2;
+    showStudentStep(2);
+  } catch(e) {
+    showStudentErr("Submit failed: "+e.message);
+  } finally {
+    setBtnLoading("s-btn1", false);
+  }
+}
+
+async function submitDiff() {
+  const diff = parseFloat(document.getElementById("s-diff").value);
+  if (isNaN(diff)) return showStudentErr("Please enter a number (can be negative).");
+
+  // Validate answer before saving
+  let state;
+  try {
+    state = await fbRead();
+  } catch(e) {
+    return showStudentErr("Could not connect: " + e.message);
+  }
+  const heights = state.students.filter(s=>s.height!=null).map(s=>s.height);
+  const mu      = mean2(heights);
+  const correct = studentHeight - mu;
+  // Allow tolerance of 0.05 to accommodate rounding to 1 d.p.
+  if (Math.abs(diff - correct) > 0.05) {
+    return showStudentErr(
+      "Not quite! Check your working: " + studentHeight + " − " + fmt2(mu) + " = " + fmt2(correct) + ". Try again."
+    );
+  }
+
+  setBtnLoading("s-btn2", true);
+  try {
+    const idx = state.students.findIndex(s=>s.id===studentId);
+    if (idx!==-1) state.students[idx].diff = diff;
+    await fbWrite(state);
+    studentDiff = diff;
+    document.getElementById("s-diff-display").textContent  = diff;
+    document.getElementById("s-diff-display2").textContent = diff;
+    studentStep = 4;
+    showStudentStep(4);
+  } catch(e) {
+    showStudentErr("Submit failed: "+e.message);
+  } finally {
+    setBtnLoading("s-btn2", false);
+  }
+}
+
+async function submitDiffSq() {
+  const v = parseFloat(document.getElementById("s-diffsq").value);
+  if (isNaN(v)||v<0) return showStudentErr("Please enter a non-negative number.");
+
+  // Validate: correct value is studentDiff squared
+  const correct = studentDiff * studentDiff;
+  if (Math.abs(v - correct) > 0.05) {
+    return showStudentErr(
+      "Not quite! (" + studentDiff + ")² = " + fmt2(correct) + ". Try again."
+    );
+  }
+
+  setBtnLoading("s-btn3", true);
+  try {
+    const state = await fbRead();
+    const idx = state.students.findIndex(s=>s.id===studentId);
+    if (idx!==-1) state.students[idx].diffSq = v;
+    await fbWrite(state);
+    const diffSqVal = parseFloat(document.getElementById("s-diffsq").value);
+    document.getElementById("s-diffsq-display").textContent = fmt2(diffSqVal);
+    studentStep = 6;
+    showStudentStep(6);
+  } catch(e) {
+    showStudentErr("Submit failed: "+e.message);
+  } finally {
+    setBtnLoading("s-btn3", false);
+  }
+}
+
+async function submitSD() {
+  const v = parseFloat(document.getElementById("s-sd-input").value);
+  if (isNaN(v)||v<=0) return showStudentErr("Please enter a positive number.");
+
+  // Validate against actual SD
+  let state;
+  try { state = await fbRead(); } catch(e) { return showStudentErr("Could not connect: "+e.message); }
+  const sqs    = state.students.filter(s=>s.diffSq!=null).map(s=>s.diffSq);
+  const sumSq  = sqs.reduce((a,b)=>a+b,0);
+  const n      = sqs.length;
+  const correct = Math.sqrt(sumSq/n);
+  if (Math.abs(v - correct) > 0.05) {
+    return showStudentErr(
+      "Not quite! √(" + fmt2(sumSq) + " ÷ " + n + ") = " + fmt2(correct) + ". Try again."
+    );
+  }
+
+  setBtnLoading("s-btn4", true);
+  try {
+    const idx = state.students.findIndex(s=>s.id===studentId);
+    if (idx!==-1) state.students[idx].sd = v;
+    await fbWrite(state);
+    studentStep = 8;
+    document.getElementById("s-done-name").textContent = "All done, "+studentName+"!";
+    showStudentStep(8);
+    renderStudentSD(state);
+  } catch(e) {
+    showStudentErr("Submit failed: "+e.message);
+  } finally {
+    setBtnLoading("s-btn4", false);
+  }
+}
+
+function setBtnLoading(id, on) {
+  const btn = document.getElementById(id);
+  btn.disabled = on;
+  const labels = {"s-btn1":"Submit Height →","s-btn2":"Submit Deviation →","s-btn3":"Submit →","s-btn4":"σ →"};
+  if (on) btn.innerHTML = '<span class="spin"></span> Saving…';
+  else if (labels[id]) btn.innerHTML = labels[id];
+}
+
+// ─── STUDENT POLL HANDLER ─────────────────────────────────────────────────
+function renderStudentPoll(state) {
+  const phase    = state.phase;
+  const students = state.students ?? [];
+  const heights  = students.filter(s=>s.height!=null).map(s=>s.height);
+  const diffs    = students.filter(s=>s.diff  !=null).map(s=>s.diff);
+  const sqs      = students.filter(s=>s.diffSq!=null).map(s=>s.diffSq);
+  const classAvg = heights.length ? mean2(heights) : null;
+  const sumD     = diffs.reduce((a,b)=>a+b,0);
+  const sumSq    = sqs.reduce((a,b)=>a+b,0);
+
+  // auto-advance waiting screens
+  if (studentStep===2 && phase>=2) {
+    studentStep = 3;
+    // populate step 2 UI
+    if (classAvg!==null) {
+      document.getElementById("s-mean-val").textContent = fmt2(classAvg)+" cm";
+      document.getElementById("s-diff-hint").textContent =
+        `💡 Your height: ${studentHeight} cm  |  x̅ = ${fmt2(classAvg)} cm`;
+    }
+    showStudentStep(3);
+    // restore button text
+    const b = document.getElementById("s-btn2");
+    b.disabled = false;
+    b.innerHTML = "Submit Deviation →";
+  }
+  if (studentStep===4 && phase>=3) {
+    studentStep = 5;
+    showStudentStep(5);
+    const b = document.getElementById("s-btn3");
+    b.disabled = false;
+    b.innerHTML = "Submit →";
+  }
+  if (studentStep===6 && phase>=4) {
+    studentStep = 7;
+    // populate step 4 info
+    const sqs2   = students.filter(s=>s.diffSq!=null).map(s=>s.diffSq);
+    const sumSq2 = sqs2.reduce((a,b)=>a+b,0);
+    const n2     = sqs2.length;
+    const div2   = sumSq2/n2;
+    document.getElementById("s-step4-sumsq").textContent = "Σ(x−x̅)² = "+fmt2(sumSq2);
+    document.getElementById("s-step4-n").textContent     = "n = "+n2;
+    document.getElementById("s-step4-div").textContent   = "Σ(x−x̅)² ÷ n = "+fmt2(div2);
+    showStudentStep(7);
+    const b = document.getElementById("s-btn4");
+    b.disabled = false;
+    b.innerHTML = "Submit σ →";
+  }
+
+  // update running sum display on step 2
+  if (studentStep===3 && diffs.length>0) {
+    const el = document.getElementById("s-sum-display");
+    const sv = document.getElementById("s-sum-val");
+    el.style.display = "block";
+    const roundedSum = Math.round(sumD * 100) / 100;
+    sv.textContent = Math.abs(roundedSum) < 0.05 ? "0" : fmt2(roundedSum);
+    sv.style.color = Math.abs(roundedSum)<0.05?"var(--green)":"var(--yellow)";
+  }
+
+  // update SD on done screen
+  if (studentStep===6) renderStudentSD(state);
+}
+
+function renderStudentSD(state) {
+  const students = state.students ?? [];
+  const sqs      = students.filter(s=>s.diffSq!=null).map(s=>s.diffSq);
+  const sumSq    = sqs.reduce((a,b)=>a+b,0);
+  const sdVal    = sqs.length ? Math.sqrt(sumSq/sqs.length) : null;
+  if (sdVal!==null) {
+    document.getElementById("s-sd-reveal").style.display = "block";
+    document.getElementById("s-sd-val").textContent     = `σ = ${fmt2(sdVal)} cm`;
+    document.getElementById("s-sd-formula").textContent = `= √( ${fmt2(sumSq)} ÷ ${sqs.length} ) = √( ${fmt2(sumSq/sqs.length)} )`;
+  }
+}
+</script>
+</body>
+</html>
